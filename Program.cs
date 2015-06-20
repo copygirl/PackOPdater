@@ -308,7 +308,7 @@ namespace PackOPdater
 						Console.WriteLine();
 						return branches[index].Name;
 				}
-				Console.SetCursorPosition(0, Console.CursorTop - 1);
+				Console.SetCursorPosition(0, Console.CursorTop);
 				Console.Write(new string(' ', Console.WindowWidth - 1));
 				Console.SetCursorPosition(0, Console.CursorTop);
 			}
