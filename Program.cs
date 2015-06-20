@@ -71,10 +71,12 @@ namespace PackOPdater
 						DownloadLatestClient().Wait();
 				} else
 					Console.WriteLine("No update available.");
+
+				Console.WriteLine();
+				CheckForMissingMods();
 				
 			}
 
-			Console.WriteLine();
 			Console.WriteLine("Press any key to continue ...");
 			Console.ReadKey();
 		}
@@ -86,9 +88,34 @@ namespace PackOPdater
 
 			Console.WriteLine("Modpack: {0} ({1}) by {2}", info.Name, info.Version, string.Join(", ", info.Authors));
 			info.Detect(WorkingDir);
+
+			Console.WriteLine();
+		}
+
+		void CheckForMissingMods()
+		{
+			var info = OPdater.CurrentModpackInfo;
+			if (info == null) return;
+			info.Detect(WorkingDir);
+
+			var missingMods = new List<Mod>();
 			foreach (var mod in info.Mods)
 				if (!mod.Optional && !mod.Enabled)
+					missingMods.Add(mod);
+
+			if (missingMods.Count > 0) {
+				foreach (var mod in missingMods)
 					Console.WriteLine("  Warning: Required mod '{0}' is {1}", mod.Name, (mod.Exists ? "disabled" : "missing"));
+				Console.WriteLine();
+
+				Console.Write("Download missing mods? ");
+				if (SelectYesNo()) {
+					var mods = missingMods.Select(mod => Tuple.Create<Mod, Mod>(mod, null)).ToList();
+					DownloadMods(mods).Wait();
+					UpdateMods(mods, new List<Mod>());
+				}
+			}
+
 			Console.WriteLine();
 		}
 
@@ -118,25 +145,7 @@ namespace PackOPdater
 
 			if (toDownload.Count > 0) {
 				Console.WriteLine("Downloading mods...");
-
-				await OPdater.Download(toDownload.Select(x => x.Item1), (mod, recv, total) => {
-						var index = toDownload.IndexOf(x => (mod == x.Item1));
-						var oldMod = toDownload[index].Item2;
-						var version = ((oldMod != null) ? string.Format("{0} -> {1}", oldMod.Version, mod.Version) : mod.Version);
-
-						var progress = ((total > 0) ? ((double)recv / total) : 0);
-						progress = (index + progress) / toDownload.Count * 100;
-
-						lock (OPdater) {
-							Console.Write("{0," + (1 - Console.WindowWidth) + "}",
-								string.Format("[{0,3:0}%] {1} ({2}) [{3}/{4} KiB]",
-									(int)progress, mod.Name, version,
-									recv / 1024, ((total > 0) ? (total / 1024).ToString() : "???")));
-							Console.SetCursorPosition(0, Console.CursorTop);
-						}
-					});
-
-				Console.WriteLine();
+				DownloadMods(toDownload);
 			}
 
 			Console.Write("Updating local git repository... ");
@@ -144,6 +153,28 @@ namespace PackOPdater
 			Console.WriteLine("DONE");
 
 			UpdateMods(toDownload, toDelete);
+		}
+
+		async Task DownloadMods(List<Tuple<Mod, Mod>> toDownload)
+		{
+			await OPdater.Download(toDownload.Select(x => x.Item1), (mod, recv, total) => {
+				var index = toDownload.IndexOf(x => (mod == x.Item1));
+				var oldMod = toDownload[index].Item2;
+				var version = ((oldMod != null) ? string.Format("{0} -> {1}", oldMod.Version, mod.Version) : mod.Version);
+
+				var progress = ((total > 0) ? ((double)recv / total) : 0);
+				progress = (index + progress) / toDownload.Count * 100;
+
+				lock (OPdater) {
+					Console.Write("{0," + (1 - Console.WindowWidth) + "}",
+						string.Format("[{0,3:0}%] {1} ({2}) [{3}/{4} KiB]",
+							(int)progress, mod.Name, version,
+							recv / 1024, ((total > 0) ? (total / 1024).ToString() : "???")));
+					Console.SetCursorPosition(0, Console.CursorTop);
+				}
+			});
+
+			Console.WriteLine();
 		}
 
 		async Task ServerUpdateCheckerLoop(CancellationToken ct = default(CancellationToken))
