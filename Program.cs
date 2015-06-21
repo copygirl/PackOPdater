@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Octokit;
 using PackOPdater.Data;
-using System.Threading;
-using System.Text;
 
 namespace PackOPdater
 {
@@ -145,7 +144,7 @@ namespace PackOPdater
 
 			if (toDownload.Count > 0) {
 				Console.WriteLine("Downloading mods...");
-				DownloadMods(toDownload);
+				await DownloadMods(toDownload);
 			}
 
 			Console.Write("Updating local git repository... ");

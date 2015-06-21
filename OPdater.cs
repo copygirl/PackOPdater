@@ -1,12 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Threading.Tasks;
 using Octokit;
 using PackOPdater.Data;
 using Git = LibGit2Sharp;
-using System.Net;
-using System.IO;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace PackOPdater
 {
