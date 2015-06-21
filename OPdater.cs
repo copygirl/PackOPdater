@@ -51,7 +51,7 @@ namespace PackOPdater
 				Repository.Network.Remotes.Add("origin", cloneUrl);
 				Repository.Network.Fetch(Repository.Network.Remotes["origin"]);
 				Repository.Checkout("origin/" + Settings.Branch,
-					new Git.CheckoutOptions { CheckoutModifiers = Git.CheckoutModifiers.Force }, null);
+					new Git.CheckoutOptions { CheckoutModifiers = Git.CheckoutModifiers.Force });
 			});
 		}
 
@@ -65,7 +65,7 @@ namespace PackOPdater
 				await Task.Run(() => {
 					Repository.Network.Fetch(Repository.Network.Remotes["origin"]);
 					Repository.Checkout("origin/" + Settings.Branch,
-						new Git.CheckoutOptions { CheckoutModifiers = Git.CheckoutModifiers.Force }, null);
+						new Git.CheckoutOptions { CheckoutModifiers = Git.CheckoutModifiers.Force });
 				});
 
 			}
