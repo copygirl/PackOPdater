@@ -11,27 +11,27 @@ for an example repository.
 
 GitHub is an amazing place to host projects of all kinds!
 
-- You can have multiple different versions of a modpack available at a time by
-making them different branches.
+- You can have multiple different versions of a modpack available at a time
+  by making them different branches. For example:
   - `master` for the most recent stable version.
   - `development` for the all most recent, approved changes.
-  - `server` for your testing server that shouldn't update all the time because
-    of minor or irrelevant changes.
+  - `server` for your testing server that shouldn't update all the time
+    because of minor or irrelevant changes to the development branch.
   - Branches for possibly-not-yet-quite-ready features in development.
 - It allows multiple people to easily work on a modpack simultaneously.
-- **Issues** can be used as a TODO list, place for suggestions, bug reports and
-  general discussions.
-- **Pull requests** can be used as a way to allow people not part of the core team
-  to provide changes and help with pack maintenance, while also having all the
-  upsides of issues.
+- **Issues** can be used as a TODO list, place for suggestions, bug reports
+  and general discussions.
+- **Pull requests** can be used as a way to allow people not part of the
+  core team to provide changes and help with pack maintenance, while also
+  having all the upsides of issues.
 - There's also **milestones**, **releases** and a **wiki**.
 
 ### How does it work?
 
-Put the `PackOPdater.exe` into a fresh Minecraft instance folder. When you're
-first starting you'll be promted to enter a repository and select a branch.
-This will create a configuration file, so on successive launches you won't
-need to enter this information again.
+Put the `PackOPdater.exe` into a fresh, Forge-enabled Minecraft instance
+folder. When you're first starting you'll be promted to enter a repository
+and select a branch. This will create a configuration file, so on successive
+launches you won't need to enter this information again.
 ```
 Couldn't find 'Pack[OP]dater.json', creating from scratch.
 > GitHub Repository: copygirl/obsidian-Modpack
@@ -54,10 +54,12 @@ Select optional mods:
     DONE
 ```
 
+Then the program will download the mods listed in the `modpack.json`.
+
 While it is technically possible to includes mods in the GitHub repository
 itself instead of putting them in the `modpack.json`, it is highly recommended
-**NOT TO DO SO**. Binary files do not work well with git, GitHub should not be
-used to host them, and it might be against the mods' redistribution terms.
+**NOT to do so**. Binary files do not work well with git, GitHub should not be
+used to host them, and it's probably against some mods' redistribution terms.
 
 ### Servers
 
@@ -73,7 +75,7 @@ For example: `PackOPdater.exe minecraftforge.jar -Xmx2G -Xms2G`
 ### Download
 
 A pre-release version is available on the **[Releases](https://github.com/copygirl/PackOPdater/releases)** page.
-Note that this hasn't been thoroughly tested yet, and some useful features might
+Note that this hasn't been tested at all yet, and some useful features might
 still be missing.
 
 Should run fine on **Linux** using **Mono** 3.0 and up.
