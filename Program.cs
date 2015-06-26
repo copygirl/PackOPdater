@@ -28,7 +28,7 @@ namespace PackOPdater
 
 		Program(string[] args)
 		{
-			WorkingDir = Directory.GetParent(Environment.CurrentDirectory).FullName;
+			WorkingDir = Environment.CurrentDirectory;
 			OPdater = new OPdater(WorkingDir);
 
 			ParseArguments(args);
