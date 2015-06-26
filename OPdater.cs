@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
+using NGit.Api;
 using Octokit;
 using PackOPdater.Data;
-using Git = LibGit2Sharp;
 
 namespace PackOPdater
 {
@@ -14,29 +14,29 @@ namespace PackOPdater
 		string _latestSha;
 		ModpackInfo _latestInfo;
 
-		public string Directory { get; private set; }
+		public string Location { get; private set; }
 
 		public AppSettings Settings { get; private set; }
 		public ModpackInfo CurrentModpackInfo { get; private set; }
 		public ModpackInfo LatestModpackInfo { get { return (_latestInfo ?? GetLatestModpackInfo().Result); } }
 
 		public IGitHubClient GitHub { get; private set; }
-		public Git.Repository Repository { get; private set; }
+		public NGit.Repository Repository { get; private set; }
 		public WebClient WebClient { get; private set; }
 
-		public string CurrentSha { get { return ((Repository != null) ? Repository.Head.Tip.Sha : null); } }
+		public string CurrentSha { get { return ((Repository != null) ? Repository.Resolve("HEAD").Name : null); } }
 		public string LatestSha { get { return (_latestSha ?? GetLatestSha().Result); } }
 
 		public OPdater(string directory)
 		{
-			Directory = directory;
+			Location = directory;
 
 			Settings = AppSettings.Load();
 			CurrentModpackInfo = ModpackInfo.Load(directory);
 
 			GitHub = new GitHubClient(new ProductHeaderValue("PackOPdater"));
-			if (Git.Repository.IsValid(directory))
-				Repository = new Git.Repository(directory);
+			if (Directory.Exists(Path.Combine(Location, ".git")))
+				Repository = Git.Open(Location).GetRepository();
 		}
 
 
@@ -44,14 +44,22 @@ namespace PackOPdater
 		{
 			if (Repository != null)
 				throw new InvalidOperationException();
-			var cloneUrl = "https://github.com/" + Settings.Owner + "/" + Settings.Repository + ".git";
+			var url = "https://github.com/" + Settings.Owner + "/" + Settings.Repository + ".git";
 			await Task.Run(() => {
-				var path = Git.Repository.Init(Directory);
-				Repository = new Git.Repository(path);
-				Repository.Network.Remotes.Add("origin", cloneUrl);
-				Repository.Network.Fetch(Repository.Network.Remotes["origin"]);
-				Repository.Checkout("origin/" + Settings.Branch,
-					new Git.CheckoutOptions { CheckoutModifiers = Git.CheckoutModifiers.Force });
+				var git = Git.Init().SetDirectory(Location).Call();
+				Repository = git.GetRepository();
+
+				var config = Repository.GetConfig();
+				config.SetString("remote", "origin", "url", url);
+				config.Save();
+
+				git.BranchCreate().SetName(Settings.Branch)
+					.SetStartPoint("origin/" + Settings.Branch)
+					.SetUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK).Call();
+
+				git.Fetch().Call();
+				git.Reset().SetRef("origin/" + Settings.Branch)
+					.SetMode(ResetCommand.ResetType.HARD).Call();
 			});
 		}
 
@@ -60,21 +68,20 @@ namespace PackOPdater
 			if (Repository == null)
 				throw new InvalidOperationException();
 			var remoteBranch = await GetBranch();
-			var head = Repository.Head;
-			if (remoteBranch.Commit.Sha != head.Tip.Tree.Sha) {
-				await Task.Run(() => {
-					Repository.Network.Fetch(Repository.Network.Remotes["origin"]);
-					Repository.Checkout("origin/" + Settings.Branch,
-						new Git.CheckoutOptions { CheckoutModifiers = Git.CheckoutModifiers.Force });
+			if (remoteBranch.Commit.Sha != CurrentSha) {
+				await Task.Run(() => { 
+					var git = new Git(Repository);
+					git.Fetch().Call();
+					git.Reset().SetRef("origin/" + Settings.Branch)
+						.SetMode(ResetCommand.ResetType.HARD).Call();
 				});
-
 			}
 		}
 
 		public async Task CloneOrUpdate()
 		{
 			await ((Repository == null) ? Clone() : Update());
-			CurrentModpackInfo = ModpackInfo.Load(Directory);
+			CurrentModpackInfo = ModpackInfo.Load(Location);
 		}
 
 
@@ -150,7 +157,7 @@ namespace PackOPdater
 		public void Dispose()
 		{
 			if (Repository != null) {
-				Repository.Dispose();
+				Repository.Close();
 				Repository = null;
 			}
 			if (WebClient != null) {

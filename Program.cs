@@ -258,17 +258,17 @@ namespace PackOPdater
 
 		void UpdateMods(List<Tuple<Mod, Mod>> toDownload, List<Mod> toDelete)
 		{
-			Directory.CreateDirectory(Path.Combine(OPdater.Directory, "mods"));
+			Directory.CreateDirectory(Path.Combine(OPdater.Location, "mods"));
 
 			foreach (var newOldPair in toDownload) {
 				var newMod = newOldPair.Item1;
 				var oldMod = newOldPair.Item2;
 				if ((oldMod != null) && oldMod.Exists)
-					File.Delete(Path.Combine(OPdater.Directory, "mods", oldMod.CurrentFileName));
-				File.Move(newMod.TempFile, Path.Combine(OPdater.Directory, "mods", newMod.FileName));
+					File.Delete(Path.Combine(OPdater.Location, "mods", oldMod.CurrentFileName));
+				File.Move(newMod.TempFile, Path.Combine(OPdater.Location, "mods", newMod.FileName));
 			}
 			foreach (var mod in toDelete)
-				File.Delete(Path.Combine(OPdater.Directory, "mods", mod.CurrentFileName));
+				File.Delete(Path.Combine(OPdater.Location, "mods", mod.CurrentFileName));
 		}
 
 		#endregion
