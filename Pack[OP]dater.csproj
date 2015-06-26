@@ -78,4 +78,19 @@
   <ItemGroup>
     <Folder Include="Data\" />
   </ItemGroup>
+  <Target Name="AfterBuild">
+    <ItemGroup>
+      <MergeAssemblies Include="$(OutputPath)$(AssemblyName).exe" />
+      <MergeAssemblies Include="$(OutputPath)*.dll" />
+    </ItemGroup>
+    <PropertyGroup>
+      <OutputAssembly>$(OutputPath)$(AssemblyName).exe</OutputAssembly>
+      <Merger Condition="('$(OS)' == 'Windows_NT')">"$(SolutionDir)packages\ILRepack.2.0.2\tools\ILRepack.exe"</Merger>
+      <Merger Condition="('$(OS)' != 'Windows_NT')">mono "$(SolutionDir)packages\ILRepack.2.0.2\tools\ILRepack.exe"</Merger>
+    </PropertyGroup>
+    <Message Text="MERGING: @(MergeAssemblies-&gt;'%(Filename)') into $(AssemblyName).exe" Importance="High" />
+    <Delete Files="$(OutputPath)$(AssemblyName).pdb" />
+    <Exec Command="$(Merger) /allowdup:Mono.Security.Cryptography.* /out:&quot;$(OutputAssembly)&quot; @(MergeAssemblies-&gt;'&quot;%(FullPath)&quot;', ' ')" />
+    <Delete Files="@(ReferenceCopyLocalPaths-&gt;'$(OutDir)%(DestinationSubDirectory)%(Filename)%(Extension)')" />
+  </Target>
 </Project>
