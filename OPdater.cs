@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using NGit.Api;
+using NGit.Transport;
 using Octokit;
 using PackOPdater.Data;
 
@@ -50,16 +51,19 @@ namespace PackOPdater
 				Repository = git.GetRepository();
 
 				var config = Repository.GetConfig();
-				config.SetString("remote", "origin", "url", url);
+				RemoteConfig remoteConfig = new RemoteConfig(config, "origin");
+				remoteConfig.AddURI(new URIish(url));
+				remoteConfig.AddFetchRefSpec(new RefSpec(
+					"+refs/heads/" + Settings.Branch +
+					":refs/remotes/origin/" + Settings.Branch));
+				remoteConfig.Update(config);
 				config.Save();
 
-				git.BranchCreate().SetName(Settings.Branch)
-					.SetStartPoint("origin/" + Settings.Branch)
-					.SetUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK).Call();
-
 				git.Fetch().Call();
-				git.Reset().SetRef("origin/" + Settings.Branch)
-					.SetMode(ResetCommand.ResetType.HARD).Call();
+
+				git.BranchCreate().SetName(Settings.Branch).SetStartPoint("origin/" + Settings.Branch)
+					.SetUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK).Call();
+				git.Checkout().SetName(Settings.Branch).Call();
 			});
 		}
 
