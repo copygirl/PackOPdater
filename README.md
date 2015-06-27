@@ -33,7 +33,7 @@ folder. When you're first starting you'll be promted to enter a repository
 and select a branch. This will create a configuration file, so on successive
 launches you won't need to enter this information again.
 ```
-Couldn't find 'Pack[OP]dater.json', creating from scratch.
+Couldn't find 'PackOPdater.json', creating from scratch.
 > GitHub Repository: copygirl/obsidian-Modpack
 Grabbing repository branches... DONE
 > Select branch: [server] (3/3)

@@ -11,7 +11,7 @@ namespace PackOPdater.Data
 		static readonly DataContractJsonSerializer _serializer =
 			new DataContractJsonSerializer(typeof(AppSettings));
 
-		public static readonly string FileName = "Pack[OP]dater.json";
+		public static readonly string FileName = "PackOPdater.json";
 
 		[DataMember]
 		public string Owner { get; set; }
