@@ -124,7 +124,7 @@ namespace PackOPdater
 		{
 			Console.Write("Grabbing latest modpack info... ");
 			ModpackInfo latest;
-			try { latest = await OPdater.GetLatestModpackInfo(); }
+			try { latest = await OPdater.DownloadLatestModpackInfo(); }
 			catch { Console.WriteLine("ERROR"); return; }
 			Console.WriteLine("DONE");
 
@@ -193,23 +193,26 @@ namespace PackOPdater
 						if (OPdater.Settings.Branch != "master")
 							url += "/tree/" + OPdater.Settings.Branch;
 
-						var parts = new List<string>();
-						parts.Add(@"{""text"":""[ UPDATE!! ]"",""color"":""red"",""bold"":""true""}");
-						parts.Add(@"{""text"":"" Version " + latest.Version + @""",""color"":""yellow"",""bold"":""false""}");
+						var lines = new List<string>();
+						lines.Add(
+							@"{""text"":""[ UPDATE!! ]"",""color"":""red"",""bold"":""true""},"" ""," +
+							@"{""text"":"" Version " + latest.Version + @""",""color"":""yellow"",""bold"":""false""}" +
+							@"{""text"":"" ("",""color"":""yellow"",""bold"":""false""},{""text"":""View Online"",""color"":""aqua"",""underlined"":""true"",""clickEvent"":{""action"":""open_url"",""value"":""" + url + @"""}},{""text"":"")"",""color"":""yellow"",""underlined"":""false""}");
 
-						var newMods = toDownload.Count(pair => (pair.Item2 == null));
-						var changedMods = toDownload.Count(pair => (pair.Item2 != null));
+						var newMods = toDownload.Where(pair => (pair.Item2 == null)).Select(pair => pair.Item1.Name).ToList();
+						var changedMods = toDownload.Where(pair => (pair.Item2 != null)).Select(pair => pair.Item1.Name).ToList();
 
-						if (newMods > 0)
-							parts.Add(@"{""text"":""" + newMods + @""",""color"":""green"",""bold"":""true""}");
-						if (changedMods > 0)
-							parts.Add(@"{""text"":""" + changedMods + @""",""color"":""gray"",""bold"":""true""}");
+						if (newMods.Count > 0)
+							lines.Add(@"{""text"":""[+] "",""color"":""green"",""bold"":""true""}," +
+								@"{""text"":""" + string.Join(", ", newMods) + @""",""color"":""yellow"",""bold"":""false""}");
+						if (changedMods.Count > 0)
+							lines.Add(@"{""text"":""[:] "",""color"":""gray"",""bold"":""true""}," +
+								@"{""text"":""" + string.Join(", ", changedMods) + @""",""color"":""yellow"",""bold"":""false""}");
 						if (toDelete.Count > 0)
-							parts.Add(@"{""text"":""" + toDelete.Count + @""",""color"":""red"",""bold"":""true""}");
+							lines.Add(@"{""text"":""[-] "",""color"":""green"",""bold"":""true""}," +
+								@"{""text"":""" + string.Join(", ", toDelete) + @""",""color"":""yellow"",""bold"":""false""}");
 
-						parts.Add(@"{""text"":"" ("",""color"":""yellow"",""bold"":""false""},{""text"":""View Online"",""color"":""aqua"",""underlined"":""true"",""clickEvent"":{""action"":""open_url"",""value"":""" + url + @"""}},{""text"":"")"",""color"":""yellow"",""underlined"":""false""}");
-
-						Wrapper.Input("/tellraw @p [" + string.Join(@","" "",", parts) + "]");
+						Wrapper.Input("/tellraw @p [" + string.Join(@",""\n"",", lines) + "]");
 					}
 
 					if (toDownload.Count > 0)
@@ -281,7 +284,7 @@ namespace PackOPdater
 
 			while (true) {
 				string owner, repo;
-				var branches = EnterRepository(OPdater.GitHub, out owner, out repo);
+				var branches = EnterRepository(out owner, out repo);
 				OPdater.Settings.Branch = SelectBranch(branches);
 				OPdater.Settings.Owner = owner;
 				OPdater.Settings.Repository = repo;
@@ -297,8 +300,9 @@ namespace PackOPdater
 		}
 
 		static readonly Regex _githubRegex = new Regex("(?:https?://github.com/)?(?<owner>[a-zA-Z0-9_.-]*)/(?<repo>[a-zA-Z0-9_.-]*)/?");
-		static IList<Branch> EnterRepository(IGitHubClient github, out string owner, out string repo)
+		static IList<Branch> EnterRepository(out string owner, out string repo)
 		{
+			var client = new GitHubClient(new ProductHeaderValue("PackOPdater"));
 			IList<Branch> branches;
 			while (true) {
 				Console.Write("> GitHub Repository: ");
@@ -308,7 +312,7 @@ namespace PackOPdater
 					repo = match.Groups["repo"].Value;
 					try {
 						Console.Write("Grabbing repository branches... ");
-						branches = new List<Branch>(github.Repository.GetAllBranches(owner, repo).Result);
+						branches = new List<Branch>(client.Repository.GetAllBranches(owner, repo).Result);
 					} catch {
 						Console.WriteLine("ERROR!");
 						continue;

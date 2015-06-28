@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
+using NGit;
 using NGit.Api;
+using NGit.Revwalk;
 using NGit.Transport;
+using NGit.Treewalk;
 using Octokit;
 using PackOPdater.Data;
 
@@ -12,21 +17,14 @@ namespace PackOPdater
 {
 	public class OPdater : IDisposable
 	{
-		string _latestSha;
-		ModpackInfo _latestInfo;
-
 		public string Location { get; private set; }
 
 		public AppSettings Settings { get; private set; }
 		public ModpackInfo CurrentModpackInfo { get; private set; }
-		public ModpackInfo LatestModpackInfo { get { return (_latestInfo ?? GetLatestModpackInfo().Result); } }
+		public ModpackInfo LatestModpackInfo { get; private set; }
 
-		public IGitHubClient GitHub { get; private set; }
 		public NGit.Repository Repository { get; private set; }
 		public WebClient WebClient { get; private set; }
-
-		public string CurrentSha { get { return ((Repository != null) ? Repository.Resolve("HEAD").Name : null); } }
-		public string LatestSha { get { return (_latestSha ?? GetLatestSha().Result); } }
 
 		public OPdater(string directory)
 		{
@@ -35,7 +33,6 @@ namespace PackOPdater
 			Settings = AppSettings.Load();
 			CurrentModpackInfo = ModpackInfo.Load(directory);
 
-			GitHub = new GitHubClient(new ProductHeaderValue("PackOPdater"));
 			if (Directory.Exists(Path.Combine(Location, ".git")))
 				Repository = Git.Open(Location).GetRepository();
 		}
@@ -46,40 +43,40 @@ namespace PackOPdater
 			if (Repository != null)
 				throw new InvalidOperationException();
 			var url = "https://github.com/" + Settings.Owner + "/" + Settings.Repository + ".git";
+			var git = Git.Init().SetDirectory(Location).Call();
+			Repository = git.GetRepository();
+
+			var config = Repository.GetConfig();
+			var remoteConfig = new RemoteConfig(config, "origin");
+			remoteConfig.AddURI(new URIish(url));
+			remoteConfig.AddFetchRefSpec(new RefSpec(
+				"+refs/heads/" + Settings.Branch +
+				":refs/remotes/origin/" + Settings.Branch));
+			remoteConfig.Update(config);
+			config.Save();
+
+			await Fetch();
+
 			await Task.Run(() => {
-				var git = Git.Init().SetDirectory(Location).Call();
-				Repository = git.GetRepository();
-
-				var config = Repository.GetConfig();
-				RemoteConfig remoteConfig = new RemoteConfig(config, "origin");
-				remoteConfig.AddURI(new URIish(url));
-				remoteConfig.AddFetchRefSpec(new RefSpec(
-					"+refs/heads/" + Settings.Branch +
-					":refs/remotes/origin/" + Settings.Branch));
-				remoteConfig.Update(config);
-				config.Save();
-
-				git.Fetch().Call();
-
 				git.BranchCreate().SetName(Settings.Branch).SetStartPoint("origin/" + Settings.Branch)
 					.SetUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK).Call();
 				git.Checkout().SetName(Settings.Branch).Call();
 			});
 		}
 
+		public async Task Fetch()
+		{
+			await Task.Run(() => { new Git(Repository).Fetch().Call(); });
+		}
+
 		public async Task Update()
 		{
 			if (Repository == null)
 				throw new InvalidOperationException();
-			var remoteBranch = await GetBranch();
-			if (remoteBranch.Commit.Sha != CurrentSha) {
-				await Task.Run(() => { 
-					var git = new Git(Repository);
-					git.Fetch().Call();
-					git.Reset().SetRef("origin/" + Settings.Branch)
-						.SetMode(ResetCommand.ResetType.HARD).Call();
-				});
-			}
+			await Task.Run(() => {
+				new Git(Repository).Reset().SetRef("origin/" + Settings.Branch)
+					.SetMode(ResetCommand.ResetType.HARD).Call();
+			});
 		}
 
 		public async Task CloneOrUpdate()
@@ -92,29 +89,64 @@ namespace PackOPdater
 		public async Task<bool> VerifyRepository()
 		{
 			try {
-				await GetLatestModpackInfo();
+				await DownloadLatestModpackInfo();
 				return true;
 			} catch {
 				return false;
 			}
 		}
 
-		public async Task<ModpackInfo> GetLatestModpackInfo()
+		public async Task<ModpackInfo> DownloadLatestModpackInfo()
 		{
-			var path = (ModpackInfo.FileName + "?ref=" + Settings.Branch);
-			var list = await GitHub.Repository.Content.GetAllContents(Settings.Owner, Settings.Repository, path);
-			return (_latestInfo = ModpackInfo.Parse(list[0].Content));
+			var client = new GitHubClient(new ProductHeaderValue("PackOPdater"));
+			var path = ModpackInfo.FileName + "?ref=" + Settings.Branch;
+			var contents = await client.Repository.Content.GetAllContents(Settings.Owner, Settings.Repository, path);
+			return ModpackInfo.Parse(contents[0].Content);
 		}
 
-		public async Task<string> GetLatestSha()
+		public async Task<ModpackInfo> GetLatestModpackInfo()
 		{
-			await GetBranch();
-			return _latestSha;
+			if (Repository == null)
+				return await DownloadLatestModpackInfo();
+
+			return await Task.Run(() => {
+				var id = Repository.Resolve("origin/" + Settings.Branch);
+				ObjectReader reader = null;
+				try {
+					reader = Repository.NewObjectReader();
+					var walk = new RevWalk(reader);
+					var commit = walk.ParseCommit(id);
+					var treeWalk = TreeWalk.ForPath(reader, ModpackInfo.FileName, commit.Tree);
+					if (treeWalk == null)
+						return null;
+
+					byte[] data = reader.Open(treeWalk.GetObjectId(0)).GetBytes();
+					var modpackJson = Encoding.UTF8.GetString(data);
+					return ModpackInfo.Parse(modpackJson);
+				} finally {
+					if (reader != null)
+						reader.Release();
+				}
+			});
+		}
+
+		public IEnumerable<RevCommit> GetNewCommits()
+		{
+			if (Repository == null)
+				return Enumerable.Empty<RevCommit>();
+			return new Git(Repository).Log().AddRange(
+				Repository.Resolve("HEAD"),
+				Repository.Resolve("origin/" + Settings.Branch)).Call();
 		}
 
 		public async Task<bool> IsUpdateAvailable()
 		{
-			return ((Repository == null) || (await GetLatestSha() != CurrentSha));
+			if (Repository == null)
+				return true;
+			
+			await Fetch();
+			return (Repository.Resolve("HEAD").Name !=
+			        Repository.Resolve("origin/" + Settings.Branch).Name);
 		}
 
 		public async Task<string> Download(Mod mod, Action<int, int> progress)
@@ -148,13 +180,6 @@ namespace PackOPdater
 				WebClient.CancelAsync();
 		}
 
-
-		async Task<Branch> GetBranch()
-		{
-			var branch = await GitHub.Repository.GetBranch(Settings.Owner, Settings.Repository, Settings.Branch);
-			_latestSha = branch.Commit.Sha;
-			return branch;
-		}
 
 		#region IDisposable implementation
 

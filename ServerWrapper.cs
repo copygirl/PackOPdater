@@ -83,7 +83,7 @@ namespace PackOPdater
 			var noticeInterval = TimeSpan.FromSeconds(8);
 
 			while ((timer.Seconds > 0) && (Players.Count > 0)) {
-				Input(@"/tellraw @p [{""text"":""Server updating in " + timer.Seconds + @" seconds..."",""color"":""yellow"",""bold"":""false""}]");
+				Input(@"/tellraw @p [{""text"":""Server updating in " + timer.TotalSeconds + @" seconds..."",""color"":""yellow"",""bold"":""false""}]");
 				await Task.Delay(noticeInterval);
 				timer -= noticeInterval;
 			}
