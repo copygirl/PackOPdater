@@ -57,17 +57,12 @@ namespace PackOPdater.Data
 
 		public IEnumerable<Tuple<Mod, Mod>> Compare(ModpackInfo other)
 		{
-			int i1 = 0, i2 = 0;
-			var list = new List<Tuple<Mod, Mod>>();
-			while ((i1 < Mods.Count) || (i2 < ((other != null) ? other.Mods.Count : 0))) {
-				var mod1 = ((i1 < Mods.Count) ? Mods[i1] : null);
-				var mod2 = ((i2 < ((other != null) ? other.Mods.Count : 0)) ? other.Mods[i2] : null);
-				var compare = ((mod1 != null) ? ((mod2 != null) ? mod1.Name.CompareTo(mod2.Name) : -1) : 1);
-				if (compare <= 0) i1++;
-				if (compare >= 0) i2++;
-				list.Add(Tuple.Create(mod1, mod2));
-			}
-			return list;
+			var modNames = Mods.Select(m => m.Name);
+			if (other != null)
+				modNames = modNames.Union(other.Mods.Select(m => m.Name));
+			return modNames.OrderBy(n => n).Select(n => Tuple.Create(
+				Mods.FirstOrDefault(m => (n == m.Name)),
+				((other != null) ? other.Mods.FirstOrDefault(m => (n == m.Name)) : null)));
 		}
 	}
 }
