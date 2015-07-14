@@ -124,7 +124,7 @@ namespace PackOPdater
 		{
 			Console.Write("Grabbing latest modpack info... ");
 			ModpackInfo latest;
-			try { latest = await OPdater.DownloadLatestModpackInfo(); }
+			try { latest = await OPdater.GetLatestModpackInfo(); }
 			catch { Console.WriteLine("ERROR"); return; }
 			Console.WriteLine("DONE");
 
@@ -196,20 +196,20 @@ namespace PackOPdater
 						var lines = new List<string>();
 						lines.Add(
 							@"{""text"":""[ UPDATE!! ]"",""color"":""red"",""bold"":""true""},"" ""," +
-							@"{""text"":"" Version " + latest.Version + @""",""color"":""yellow"",""bold"":""false""}" +
-							@"{""text"":"" ("",""color"":""yellow"",""bold"":""false""},{""text"":""View Online"",""color"":""aqua"",""underlined"":""true"",""clickEvent"":{""action"":""open_url"",""value"":""" + url + @"""}},{""text"":"")"",""color"":""yellow"",""underlined"":""false""}");
+							@"{""text"":"" Version " + latest.Version + @""",""color"":""yellow"",""bold"":""false""},"" ""," +
+							@"{""text"":""("",""color"":""yellow"",""bold"":""false""},{""text"":""View Online"",""color"":""aqua"",""underlined"":""true"",""clickEvent"":{""action"":""open_url"",""value"":""" + url + @"""}},{""text"":"")"",""color"":""yellow"",""underlined"":""false""}");
 
 						var newMods = toDownload.Where(pair => (pair.Item2 == null)).Select(pair => pair.Item1.Name).ToList();
 						var changedMods = toDownload.Where(pair => (pair.Item2 != null)).Select(pair => pair.Item1.Name).ToList();
 
 						if (newMods.Count > 0)
-							lines.Add(@"{""text"":""[+] "",""color"":""green"",""bold"":""true""}," +
+							lines.Add(@"{""text"":""[+]"",""color"":""green"",""bold"":""true""},"" ""," +
 								@"{""text"":""" + string.Join(", ", newMods) + @""",""color"":""yellow"",""bold"":""false""}");
 						if (changedMods.Count > 0)
-							lines.Add(@"{""text"":""[:] "",""color"":""gray"",""bold"":""true""}," +
+							lines.Add(@"{""text"":""[:]"",""color"":""gray"",""bold"":""true""},"" ""," +
 								@"{""text"":""" + string.Join(", ", changedMods) + @""",""color"":""yellow"",""bold"":""false""}");
 						if (toDelete.Count > 0)
-							lines.Add(@"{""text"":""[-] "",""color"":""green"",""bold"":""true""}," +
+							lines.Add(@"{""text"":""[-]"",""color"":""green"",""bold"":""true""},"" ""," +
 								@"{""text"":""" + string.Join(", ", toDelete) + @""",""color"":""yellow"",""bold"":""false""}");
 
 						Wrapper.Input("/tellraw @p [" + string.Join(@",""\n"",", lines) + "]");
