@@ -189,9 +189,8 @@ namespace PackOPdater
 					if (Wrapper.Running && (Wrapper.Players.Count > 0)) {
 						// Write a nice message to the players telling them about the new update.
 
-						var url = "https://github.com/" + OPdater.Settings.Owner + "/commits/" + OPdater.Settings.Repository;
-						if (OPdater.Settings.Branch != "master")
-							url += "/tree/" + OPdater.Settings.Branch;
+						var url = "https://github.com/" + OPdater.Settings.Owner + "/" +
+							OPdater.Settings.Repository + "/commits/" + OPdater.Settings.Branch;
 
 						var lines = new List<string>();
 						lines.Add(
