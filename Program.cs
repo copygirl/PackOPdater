@@ -211,7 +211,7 @@ namespace PackOPdater
 							lines.Add(@"{""text"":""[-]"",""color"":""green"",""bold"":""true""},"" ""," +
 								@"{""text"":""" + string.Join(", ", toDelete) + @""",""color"":""yellow"",""bold"":""false""}");
 
-						Wrapper.Input("/tellraw @p [" + string.Join(@",""\n"",", lines) + "]");
+						Wrapper.Input("/tellraw @a [" + string.Join(@",""\n"",", lines) + "]");
 					}
 
 					if (toDownload.Count > 0)
