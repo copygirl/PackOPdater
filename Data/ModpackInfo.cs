@@ -57,12 +57,11 @@ namespace PackOPdater.Data
 
 		public IEnumerable<Tuple<Mod, Mod>> Compare(ModpackInfo other)
 		{
-			var modNames = Mods.Select(m => m.Name);
-			if (other != null)
-				modNames = modNames.Union(other.Mods.Select(m => m.Name));
+			var otherMods = ((other != null) ? other.Mods : Enumerable.Empty<Mod>());
+			var modNames = Mods.Select(m => m.Name).Union(otherMods.Select(m => m.Name));
 			return modNames.OrderBy(n => n).Select(n => Tuple.Create(
 				Mods.FirstOrDefault(m => (n == m.Name)),
-				((other != null) ? other.Mods.FirstOrDefault(m => (n == m.Name)) : null)));
+				otherMods.FirstOrDefault(m => (n == m.Name))));
 		}
 	}
 }
